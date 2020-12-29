@@ -1,19 +1,19 @@
 import time
 import struct
-import keyboard
+import getch
 from socket import *
 
 print("Client started, listening for offer requests...")
 # Servers broadcast their announcements with destination port 13117 
 # client offers port must be this number
-clientPort = 13117
+clientPort = 13118
 clientOffersSocket = socket(AF_INET, SOCK_DGRAM)
 clientOffersSocket.bind(('', clientPort))
 
 while True:
     # get offer from some server
     message, (serverIP, serverPort) = clientOffersSocket.recvfrom(2048)
-    magicCookie, messageType, TCPserverPort = struct.unpack('IBh', message)
+    magicCookie, messageType, TCPserverPort = struct.unpack('!IBH', message)
 
     # checking cookie magic number
     if magicCookie == int("0xfeedbeef", 0):
@@ -32,13 +32,14 @@ while True:
         print(serverMSG)
 
         # START OF THE GAME
-        now = time.time()
-        limit = now + 10
         # for 10 seconds, sends every character the client taps
-        while time.time() < limit:
-            char = 'a\n'.encode('ascii')
-            clientSocket.send(char)
-            time.sleep(10)
+        clientSocket.settimeout(10)
+        while True:
+            try:
+                char = getch.getch()
+                clientSocket.send(char.encode('ascii'))
+            except:
+                break
 
         # END OF THE GAME
         print("Server disconnected, listening for offer requests...")

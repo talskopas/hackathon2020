@@ -10,7 +10,7 @@ print("Server started, listening on IP address 172.1.0.4")
 serverOffersSocket = socket(AF_INET, SOCK_DGRAM)
 
 # creating TCP socket for accept clients
-serverPort = 12000
+serverPort = 25000
 serverConnectionSocket = socket(AF_INET, SOCK_STREAM)
 serverConnectionSocket.bind(('', serverPort))
 
@@ -21,21 +21,20 @@ group2 = []
 def offer_thread_function():
     # create offer to be send
     magicCookie = int("0xfeedbeef", 0)
-    messageType = 2
-    offer = struct.pack('IBh', magicCookie, messageType, serverPort)
+    messageType = int("0x2", 0)
+    offer = struct.pack('!IBH', magicCookie, messageType, serverPort)
 
     # sending offers until the 10 seconds timer will pass
     for i in range(10):
-        serverOffersSocket.sendto(offer, ("localhost", 13117))
+        serverOffersSocket.sendto(offer, ("localhost", 13118))
         time.sleep(1)
-    
-    serverConnectionSocket.close()
 
 def set_up_game_function():
+    # accepting clients until the 10 seconds timer will pass 
+    serverConnectionSocket.settimeout(10)
     serverConnectionSocket.listen(1)
     groupFlag = False
 
-    # accepting clients until the 10 seconds timer will pass 
     while True:
         try:
             # wait until client is trying to connect and get his team name
@@ -47,25 +46,28 @@ def set_up_game_function():
             else:
                 group2.append((teamName, connectionSocket))
             groupFlag = not groupFlag 
-        # catching exception when offer thread close the server connection socket - after 10 seconds
+        # catching exception when the socket gets timeout - after 10 seconds
         except:
             break  
 
 def client_thread(client_socket, game_start_MSG):
+    # the is played for 10 seconds
+    client_socket.settimeout(10)
     pressing_counter = 0
     
-    # closing the socket at the end of the block
-    with client_socket:
-        # send starting message to the client
-        client_socket.send(game_start_MSG.encode('ascii'))
-        
-        char = "The char that the client pressed"
-        # taps detector until the client stop sending - after 10 seconds
-        while char:  
+    # send starting message to the client
+    client_socket.send(game_start_MSG.encode('ascii'))
+    
+    # taps detector until the client stop sending - after 10 seconds
+    while True:  
+        try:
             # getting client taps
             char = client_socket.recv(1024).decode('ascii')
             pressing_counter += 1
-        return pressing_counter - 1
+        except:
+            break
+    client_socket.close()
+    return pressing_counter
 
 def game_threads_function():
     # creating starting message that will be send to all clients
@@ -75,6 +77,7 @@ def game_threads_function():
     game_start_MSG += "Group 2:\n==\n" 
     for (teamName, client_socket) in group2:
         game_start_MSG += teamName + "\n"
+    game_start_MSG += "Start pressing keys on your keyboard as fast as you can!!"
 
     # counters for group1 and group2
     group1_pressing_counter = 0
@@ -121,13 +124,10 @@ while True:
     # end of the game
     print("Game over, sending out offer requests...")
 
-    # creating connection socket for next round
-    serverConnectionSocket = socket(AF_INET, SOCK_STREAM)
-    serverConnectionSocket.bind(('', serverPort))
-
     # initialize the two arrays of groups for next round 
     group1 = []
     group2 = []
 
 serverOffersSocket.close()
+serverConnectionSocket.close()
         
