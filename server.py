@@ -1,20 +1,40 @@
 import time
 import struct
 import concurrent.futures
+import sys
 from scapy.arch import get_if_addr
 from threading import *
 from socket import *
 
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 my_IP = get_if_addr('eth1')
-print("Server started, listening on IP address " + str(my_IP))
+print(bcolors.OKBLUE + "Server started, listening on IP address " + str(my_IP) + bcolors.ENDC)
 
 # creating UDP socket for sending offers
 serverOffersSocket = socket(AF_INET, SOCK_DGRAM)
+try:
+    serverOffersSocket.bind((my_IP, 0))
+except:
+    sys.exit(bcolors.WARNING + "Cannot Bind to (IP, Port) - (" + str(my_IP) + ", 0)" + bcolors.ENDC)
+serverOffersSocket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
 
 # creating TCP socket for accept clients
-serverPort = 25000
+serverPort = 24000
 serverConnectionSocket = socket(AF_INET, SOCK_STREAM)
-serverConnectionSocket.bind((my_IP, serverPort))
+try:
+    serverConnectionSocket.bind((my_IP, serverPort))
+except:
+    sys.exit(bcolors.WARNING + "Cannot Bind to (IP, Port) - (" + str(my_IP) + ", " + str(serverPort) + ")" + bcolors.ENDC)
 
 # two arrays of groups - each team in the group contains (teamName, socket) 
 group1 = []
@@ -28,7 +48,7 @@ def offer_thread_function():
 
     # sending offers until the 10 seconds timer will pass
     for i in range(10):
-        serverOffersSocket.sendto(offer, ("172.1.255.255", 13118))
+        serverOffersSocket.sendto(offer, ("172.1.255.255", 13114))
         time.sleep(1)
 
 def set_up_game_function():
@@ -54,18 +74,23 @@ def set_up_game_function():
 
 def client_thread(client_socket, game_start_MSG):
     pressing_counter = 0
-    
+
     # send starting message to the client
     client_socket.send(game_start_MSG.encode('ascii'))
+
+    # 10 seconds timer 
+    client_socket.settimeout(10)
     
     # taps detector until the client stop sending - after 10 seconds
-    char = "the char recived from the client"
-    while char:  
-        # getting client taps
-        char = client_socket.recv(1024).decode('ascii')
-        pressing_counter += 1
+    while True:
+        try:  
+            # getting client taps
+            char = client_socket.recv(1024).decode('ascii')
+            pressing_counter += 1
+        except:
+            break
     
-    return pressing_counter - 1
+    return pressing_counter
 
 def game_threads_function():
     # creating starting message that will be send to all clients
@@ -75,7 +100,7 @@ def game_threads_function():
     game_start_MSG += "Group 2:\n==\n" 
     for (teamName, client_socket) in group2:
         game_start_MSG += teamName + "\n"
-    game_start_MSG += "Start pressing keys on your keyboard as fast as you can!!"
+    game_start_MSG += "Start pressing keys on your keyboard as fast as you can!!\n"
 
     # counters for group1 and group2
     group1_pressing_counter = 0
@@ -125,7 +150,7 @@ while True:
     game_threads_function()
 
     # end of the game
-    print("Game over, sending out offer requests...")
+    print(bcolors.OKBLUE + "Game over, sending out offer requests..." + bcolors.ENDC)
 
     # initialize the two arrays of groups for next round 
     group1 = []
