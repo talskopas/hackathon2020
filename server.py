@@ -1,10 +1,12 @@
 import time
 import struct
 import concurrent.futures
+from scapy.arch import get_if_addr
 from threading import *
 from socket import *
 
-print("Server started, listening on IP address 172.1.0.4")
+my_IP = get_if_addr('eth1')
+print("Server started, listening on IP address " + str(my_IP))
 
 # creating UDP socket for sending offers
 serverOffersSocket = socket(AF_INET, SOCK_DGRAM)
@@ -12,7 +14,7 @@ serverOffersSocket = socket(AF_INET, SOCK_DGRAM)
 # creating TCP socket for accept clients
 serverPort = 25000
 serverConnectionSocket = socket(AF_INET, SOCK_STREAM)
-serverConnectionSocket.bind(('', serverPort))
+serverConnectionSocket.bind((my_IP, serverPort))
 
 # two arrays of groups - each team in the group contains (teamName, socket) 
 group1 = []
@@ -26,7 +28,7 @@ def offer_thread_function():
 
     # sending offers until the 10 seconds timer will pass
     for i in range(10):
-        serverOffersSocket.sendto(offer, ("localhost", 13118))
+        serverOffersSocket.sendto(offer, ("172.1.255.255", 13118))
         time.sleep(1)
 
 def set_up_game_function():
@@ -62,7 +64,7 @@ def client_thread(client_socket, game_start_MSG):
         # getting client taps
         char = client_socket.recv(1024).decode('ascii')
         pressing_counter += 1
-    client_socket.close()
+    
     return pressing_counter - 1
 
 def game_threads_function():
@@ -98,9 +100,14 @@ def game_threads_function():
         game_end_MSG += "Group 2 wins!\nCongratulations to the winners:\n==\n"
         for (teamName, client_socket) in group2:
             game_end_MSG += teamName + "\n"
-    print(game_end_MSG)
-
-
+    
+    # send the results to all clients and close the connection
+    for (teamName, client_socket) in group1:
+        client_socket.send(game_end_MSG.encode('ascii'))
+        client_socket.close()
+    for (teamName, client_socket) in group2:
+        client_socket.send(game_end_MSG.encode('ascii'))
+        client_socket.close()
 
 # MAIN INFINITY LOOP
 while True:

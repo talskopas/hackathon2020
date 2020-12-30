@@ -45,6 +45,10 @@ while True:
                 char = sys.stdin.read(1)
                 clientSocket.send(char.encode('ascii'))
 
+        # get the results of the game and prints it
+        gameEndMSG = clientSocket.recv(1024).decode('ascii')
+        print(gameEndMSG)
+
         # END OF THE GAME
         print("Server disconnected, listening for offer requests...")
         clientSocket.close()
