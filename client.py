@@ -1,6 +1,9 @@
 import time
 import struct
-import getch
+import sys
+import select
+import tty
+import termios
 from socket import *
 
 print("Client started, listening for offer requests...")
@@ -32,14 +35,15 @@ while True:
         print(serverMSG)
 
         # START OF THE GAME
+        termios.tcgetattr(sys.stdin)
+        tty.setcbreak(sys.stdin.fileno())
         # for 10 seconds, sends every character the client taps
-        clientSocket.settimeout(10)
-        while True:
-            try:
-                char = getch.getch()
+        now = time.time()
+        limit = now + 10
+        while time.time() < limit:
+            if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
+                char = sys.stdin.read(1)
                 clientSocket.send(char.encode('ascii'))
-            except:
-                break
 
         # END OF THE GAME
         print("Server disconnected, listening for offer requests...")

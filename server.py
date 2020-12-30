@@ -51,23 +51,19 @@ def set_up_game_function():
             break  
 
 def client_thread(client_socket, game_start_MSG):
-    # the is played for 10 seconds
-    client_socket.settimeout(10)
     pressing_counter = 0
     
     # send starting message to the client
     client_socket.send(game_start_MSG.encode('ascii'))
     
     # taps detector until the client stop sending - after 10 seconds
-    while True:  
-        try:
-            # getting client taps
-            char = client_socket.recv(1024).decode('ascii')
-            pressing_counter += 1
-        except:
-            break
+    char = "the char recived from the client"
+    while char:  
+        # getting client taps
+        char = client_socket.recv(1024).decode('ascii')
+        pressing_counter += 1
     client_socket.close()
-    return pressing_counter
+    return pressing_counter - 1
 
 def game_threads_function():
     # creating starting message that will be send to all clients
