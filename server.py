@@ -6,6 +6,7 @@ from scapy.arch import get_if_addr
 from threading import *
 from socket import *
 
+# COLORS BONUS
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -17,8 +18,12 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+# get my IP
 my_IP = get_if_addr('eth1')
 print(bcolors.OKBLUE + "Server started, listening on IP address " + str(my_IP) + bcolors.ENDC)
+
+# max size for reciving data
+maxBufferSize = 1024
 
 # creating UDP socket for sending offers
 serverOffersSocket = socket(AF_INET, SOCK_DGRAM)
@@ -40,28 +45,34 @@ except:
 group1 = []
 group2 = []
 
+# OFFER MESSAGES FOR CLIENTS FOR 10 SECONDS
 def offer_thread_function():
     # create offer to be send
     magicCookie = int("0xfeedbeef", 0)
     messageType = int("0x2", 0)
     offer = struct.pack('!IBH', magicCookie, messageType, serverPort)
 
+    # brodcast IP and Port
+    brodcastIP = "172.1.255.255"
+    brodcastPort = 13117
     # sending offers until the 10 seconds timer will pass
     for i in range(10):
-        serverOffersSocket.sendto(offer, ("172.1.255.255", 13114))
+        serverOffersSocket.sendto(offer, (brodcastIP, brodcastPort))
         time.sleep(1)
 
+# ACCEPTING CLIENTS AND ASSIGN THEM TO A GROUP
 def set_up_game_function():
     # accepting clients until the 10 seconds timer will pass 
     serverConnectionSocket.settimeout(10)
     serverConnectionSocket.listen(1)
     groupFlag = False
 
+    # ending after 10 seconds
     while True:
         try:
             # wait until client is trying to connect and get his team name
             connectionSocket, addr = serverConnectionSocket.accept()
-            teamName = connectionSocket.recv(1024).decode('ascii')
+            teamName = connectionSocket.recv(maxBufferSize).decode('ascii')
             # adding client to group1 or group2
             if groupFlag:
                 group1.append((teamName, connectionSocket))
@@ -72,6 +83,8 @@ def set_up_game_function():
         except:
             break  
 
+# MAIN CLIENT THREAD - GETTING CHARS FROM CLIENT
+# RETURN THE NUMBER OF CHAR THAT WAS PRESSED
 def client_thread(client_socket, game_start_MSG):
     pressing_counter = 0
 
@@ -85,13 +98,14 @@ def client_thread(client_socket, game_start_MSG):
     while True:
         try:  
             # getting client taps
-            char = client_socket.recv(1024).decode('ascii')
+            char = client_socket.recv(maxBufferSize).decode('ascii')
             pressing_counter += 1
         except:
             break
     
     return pressing_counter
 
+# THE MAIN THREAD THAT RUNS THE GAME
 def game_threads_function():
     # creating starting message that will be send to all clients
     game_start_MSG = "Welcome to Keyboard Spamming Battle Royale.\nGroup 1:\n==\n"

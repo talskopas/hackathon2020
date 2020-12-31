@@ -5,6 +5,7 @@ import getch
 import multiprocessing
 from socket import *
 
+# COLORS BONUS 
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -18,9 +19,12 @@ class bcolors:
 
 print(bcolors.OKBLUE + "Client started, listening for offer requests..." + bcolors.ENDC)
 
+# max size for reciving data
+maxBufferSize = 1024
+
 # Servers broadcast their announcements with destination port 13117 
 # client offers port must be this number
-clientPort = 13114
+clientPort = 13117
 clientOffersSocket = socket(AF_INET, SOCK_DGRAM)
 try:
     clientOffersSocket.bind(('', clientPort))
@@ -28,10 +32,10 @@ except:
     sys.exit(bcolors.WARNING + "Cannot Bind to Port " + str(clientPort) + bcolors.ENDC)
 clientOffersSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 
-
+# CLIENT RUNNING FOREVER
 while True:
     # get offer from some server
-    message, (serverIP, serverPort) = clientOffersSocket.recvfrom(1024)
+    message, (serverIP, serverPort) = clientOffersSocket.recvfrom(maxBufferSize)
     try:
         magicCookie, messageType, TCPserverPort = struct.unpack('!IBH', message)
     except:
@@ -55,22 +59,25 @@ while True:
         clientSocket.send(teamName)
 
         # printing message from the server - the game is starting
-        serverMSG = clientSocket.recv(1024).decode('ascii')
+        serverMSG = clientSocket.recv(maxBufferSize).decode('ascii')
         print(bcolors.OKGREEN + serverMSG + bcolors.ENDC)
 
         # START OF THE GAME
         def game_function():
+            # ending after 10 seconds 
             while True:
+                # get char from client command
                 char = getch.getch()
                 clientSocket.send(char.encode('ascii'))
-
+        
+        # running the game for 10 seconds
         game_thread = multiprocessing.Process(target=game_function)
         game_thread.start()
         time.sleep(10)
         game_thread.terminate()
 
         # get the results of the game and prints it
-        gameEndMSG = clientSocket.recv(1024).decode('ascii')
+        gameEndMSG = clientSocket.recv(maxBufferSize).decode('ascii')
         print(bcolors.OKGREEN + gameEndMSG + bcolors.ENDC)
 
         # END OF THE GAME
